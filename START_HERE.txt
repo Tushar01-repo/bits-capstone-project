@@ -1,0 +1,24 @@
+NEWS SIGNAL - CAPSTONE PACKAGE
+
+1. Install Python 3.12.
+2. Open PowerShell in this folder.
+3. Run:
+   py -3.12 -m venv .venv
+   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+   .\.venv\Scripts\python.exe -m newsml.server
+4. Open http://127.0.0.1:8000
+
+A trained model is already included. To rebuild and test everything:
+   .\.venv\Scripts\python.exe golden_path.py
+
+Read README.md for API/batch commands and Docker/CI/CD setup.
+Read docs/REQUIREMENTS_MATRIX.md for assignment coverage.
+Read docs/VERIFICATION.md for actual scores and outstanding checks.
+Read docs/DEMO_SCRIPT.md for the 11-minute submission plan.
+
+This private ZIP includes your original dataset. Do not publish the ZIP
+wholesale without confirming dataset redistribution rights. Raw data,
+artifacts and logs are excluded by .gitignore for source-code publication.
+
+ALL-STEP AUTOMATION (requires Docker Desktop and Node.js):
+   .\scripts\run_all.ps1 -WithDocker -WithBrowserTests

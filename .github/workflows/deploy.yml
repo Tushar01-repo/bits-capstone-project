@@ -1,0 +1,29 @@
+name: Deploy on private Docker host
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: news-private-deployment
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment: capstone-private
+    runs-on: [self-hosted, linux, news-capstone]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require provisioned dataset
+        run: test -f /opt/news-capstone/data/news_sentiment_raw.csv
+      - name: Mount private dataset into checkout
+        run: |
+          mkdir -p data/raw
+          cp /opt/news-capstone/data/news_sentiment_raw.csv data/raw/news_sentiment_raw.csv
+      - name: Train and deploy
+        run: |
+          docker compose --project-name news-capstone build
+          docker compose --project-name news-capstone run --rm train
+          docker compose --project-name news-capstone up -d --wait app
+      - name: Verify deployed API
+        run: |
+          curl --fail http://127.0.0.1:8000/health
+          docker compose --project-name news-capstone ps

@@ -1,0 +1,9 @@
+.git
+.venv
+__pycache__
+artifacts
+logs
+data
+*.zip
+node_modules/
+ui-test-results/

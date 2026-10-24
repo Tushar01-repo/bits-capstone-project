@@ -1,0 +1,13 @@
+groups:
+  - name: news-service
+    rules:
+      - alert: NewsServiceDown
+        expr: up{job="news-sentiment"} == 0
+        for: 1m
+        annotations:
+          summary: News sentiment service is unavailable
+      - alert: NewsInferenceErrors
+        expr: rate(news_errors_total[5m]) / clamp_min(rate(news_requests_total[5m]), 0.001) > 0.05
+        for: 2m
+        annotations:
+          summary: More than five percent of inference requests failed

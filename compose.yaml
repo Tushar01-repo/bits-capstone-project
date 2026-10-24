@@ -1,0 +1,29 @@
+services:
+  train:
+    build: .
+    profiles: [tools]
+    command: [python, -m, newsml.pipeline, --input, /data/news_sentiment_raw.csv]
+    volumes:
+      - ./data/raw:/data:ro
+      - model-data:/app/artifacts
+    healthcheck:
+      disable: true
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - model-data:/app/artifacts:ro
+      - request-logs:/app/logs
+    restart: unless-stopped
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    profiles: [monitoring]
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./infra/alerts.yml:/etc/prometheus/alerts.yml:ro
+volumes:
+  model-data:
+  request-logs:
