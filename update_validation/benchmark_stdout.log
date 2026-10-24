@@ -1,0 +1,48 @@
+{
+  "platform": "Linux-6.18.55-x86_64-with-glibc2.39",
+  "python": "3.12.14",
+  "concurrency": 1,
+  "iterations": 300,
+  "scope": "paired in-process inference; not network latency",
+  "model_version": "20261024T192406Z-3b3251",
+  "explain_False": {
+    "before": {
+      "requests": 300,
+      "errors": 0,
+      "p50_ms": 22.835756499944182,
+      "p95_ms": 40.28592075001143,
+      "p99_ms": 53.3157453399405,
+      "requests_per_second": 39.10414426903052,
+      "elapsed_seconds": 7.6718211230003135
+    },
+    "after": {
+      "requests": 300,
+      "errors": 0,
+      "p50_ms": 0.51971800002093,
+      "p95_ms": 0.771764849991996,
+      "p99_ms": 1.4094304100001376,
+      "requests_per_second": 1799.968914547997,
+      "elapsed_seconds": 0.16666954499896747
+    }
+  },
+  "explain_True": {
+    "before": {
+      "requests": 300,
+      "errors": 0,
+      "p50_ms": 20.46739199994363,
+      "p95_ms": 29.318652400064597,
+      "p99_ms": 36.149989129968375,
+      "requests_per_second": 45.84008749013734,
+      "elapsed_seconds": 6.544490126999563
+    },
+    "after": {
+      "requests": 300,
+      "errors": 0,
+      "p50_ms": 19.97860749997926,
+      "p95_ms": 28.323032600036413,
+      "p99_ms": 38.942424819992986,
+      "requests_per_second": 46.802015496407904,
+      "elapsed_seconds": 6.409980357000336
+    }
+  }
+}

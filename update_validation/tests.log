@@ -1,0 +1,24 @@
+test_error_separation_and_histogram (test_fixes.FixTests.test_error_separation_and_histogram) ... ok
+test_optimized_predictions_equal_baseline (test_fixes.FixTests.test_optimized_predictions_equal_baseline) ... ok
+test_rollback_checks_integrity_and_preserves_pointer (test_fixes.FixTests.test_rollback_checks_integrity_and_preserves_pointer) ... ok
+test_api_dashboard_and_metrics (test_system.SystemTests.test_api_dashboard_and_metrics) ... ok
+test_api_rejects_bad_requests (test_system.SystemTests.test_api_rejects_bad_requests) ... ok
+test_artifact_manifest (test_system.SystemTests.test_artifact_manifest) ... ok
+test_batch_matches_direct (test_system.SystemTests.test_batch_matches_direct) ... ok
+test_chronology_and_disjoint_groups (test_system.SystemTests.test_chronology_and_disjoint_groups) ... ok
+test_drift_identity_and_shift (test_system.SystemTests.test_drift_identity_and_shift) ... ok
+test_evaluation_overlap_and_alias (test_system.SystemTests.test_evaluation_overlap_and_alias) ... ok
+test_explanation_contributions_match_logit (test_system.SystemTests.test_explanation_contributions_match_logit) ... ok
+test_invalid_schema_fails (test_system.SystemTests.test_invalid_schema_fails) ... ok
+test_live_drift_and_operation_counts (test_system.SystemTests.test_live_drift_and_operation_counts) ... ok
+test_no_score_leakage (test_system.SystemTests.test_no_score_leakage) ... ok
+test_normalized_duplicate_removed (test_system.SystemTests.test_normalized_duplicate_removed) ... ok
+test_unreviewed_labels_rejected (test_system.SystemTests.test_unreviewed_labels_rejected) ... ok
+test_upload_validation (test_system.SystemTests.test_upload_validation) ... ok
+test_uploaded_evaluation_known_scores (test_system.SystemTests.test_uploaded_evaluation_known_scores) ... ok
+test_validation_and_probabilities (test_system.SystemTests.test_validation_and_probabilities) ... ok
+
+----------------------------------------------------------------------
+Ran 19 tests in 1.365s
+
+OK

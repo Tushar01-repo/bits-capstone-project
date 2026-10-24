@@ -1,0 +1,456 @@
+NEWS SENTIMENT MLOPS — COMPLETE PROJECT GUIDE
+Owner: Tushar Pal
+Prepared: 25 October 2026
+
+GitHub repository:
+https://github.com/Tushar01-repo/bits-capstone-project
+
+Local project directory:
+C:\Users\paltu\news-sentiment-mlops
+
+PROJECT PURPOSE
+Classify news headlines and optional descriptions as positive, neutral or
+negative using a trained TF-IDF + logistic regression pipeline. Includes
+single/batch inference, evaluation, drift checks, explanations, Docker,
+GitHub Actions, Prometheus and Grafana.
+
+This is news sentiment classification, not stock-price prediction.
+Company-specific event detection is not implemented. Labels in the supplied
+dataset are automated/weak labels; test results are not human-verified accuracy.
+The API uses Python's standard-library HTTP server, not FastAPI.
+
+IMPORTANT: Use the sections relevant to your current state. You have already
+reported EC2 deployment and demonstrated CI/Grafana. Do not recreate resources
+or retrain merely to repeat completed steps. Capture fresh evidence for the
+final code/model version. Commands below are instructions, not proof they ran.
+
+======================================================================
+1. SECURITY AND BACKUP — DO THIS FIRST
+======================================================================
+- Remove env-key.pem from submission archives and the project directory.
+- If that shared key still grants EC2 access, install/test a replacement key,
+  then revoke the old key's access. Keep an existing session open until the
+  replacement works to avoid locking yourself out.
+- Keep replacement keys outside the repository, e.g. C:\Users\paltu\.ssh\.
+- Never commit .env files, private keys, or secrets/alert_webhook_url.
+- .gitignore does not remove previously committed secrets from Git history.
+- Retain a private backup of your project, current model pointer, model runs,
+  and currently running Docker image. Do not publish that private backup.
+- Do not run docker compose down -v: it deletes named volumes.
+
+======================================================================
+2. APPLY THE FIXES ZIP
+======================================================================
+Extract news-capstone-fixes.zip into a separate directory, for example:
+C:\Users\paltu\Downloads\news-capstone-fixes
+
+In Windows PowerShell:
+
+cd C:\Users\paltu\news-sentiment-mlops
+python "C:\Users\paltu\Downloads\news-capstone-fixes\apply_fixes.py" --project .
+
+The installer verifies payload hashes and backs up changed files under
+capstone-fix-backups/. It preserves artifacts, raw data and base Compose files.
+Read docs/UPDATE_GUIDE.md after installation.
+
+The update includes inference optimization, separate 4xx/5xx counters, a
+latency histogram, dependency pins, CI/deploy changes, benchmark and rollback
+tools, deployment evidence capture, and optional alerting configuration.
+
+======================================================================
+3. CHECK MODEL/DEPENDENCY COMPATIBILITY BEFORE REBUILDING
+======================================================================
+Inspect your current deployed model manifest before replacing its environment:
+
+Invoke-RestMethod http://127.0.0.1:8002/report/manifest
+
+Use port 18002 instead if accessing EC2 through the tunnel in section 8.
+Record Python, sklearn, numpy and pandas versions and the run ID.
+
+The update pins the supplied Windows model's environment:
+numpy 2.2.6, pandas 2.3.3, scipy 1.15.3, scikit-learn 1.7.2, joblib 1.6.0.
+Your EC2 model may have been trained with different versions. Either retain
+its validated dependency versions or retrain in the selected pinned
+environment, validate the new model, and then restart the application.
+Do not assume a Docker rebuild retrains the named-volume model.
+
+======================================================================
+4. LOCAL PYTHON SETUP AND TESTS
+======================================================================
+Use an existing compatible virtual environment, or create one with Python 3.12:
+
+cd C:\Users\paltu\news-sentiment-mlops
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+New-Item -ItemType Directory -Force evidence | Out-Null
+python -m unittest discover -s tests -v 2>&1 | Tee-Object evidence\tests.log
+
+The fixes package passed 19 local unit/integration tests during packaging.
+Rerun against your actual installed environment; retain the fresh results.
+
+Only if you intentionally want to train a new model and update current.json:
+
+python golden_path.py
+
+This runs tests, training, evaluation, batch inference and HTTP smoke checks.
+Preserve the previous model before running it. A new run changes the active
+model pointer. Do not repeatedly tune on the test set.
+
+Start the local Python application:
+
+python -m newsml.server
+
+Open http://127.0.0.1:8000
+This process occupies the terminal. Use another terminal for API calls.
+
+======================================================================
+5. LOCAL DOCKER SETUP
+======================================================================
+Start Docker Desktop and verify the daemon:
+
+docker info
+
+Build and test the image:
+
+docker compose build
+docker compose run --rm --no-deps app python -m unittest discover -s tests -v
+
+Only when initializing an empty model volume or deliberately retraining:
+
+docker compose run --rm train
+
+Start the application and monitoring:
+
+docker compose -f compose.yaml -f compose.grafana.yaml --profile monitoring up -d --wait app prometheus grafana
+docker compose -f compose.yaml -f compose.grafana.yaml --profile monitoring ps
+
+Local URLs:
+Application: http://127.0.0.1:8002
+Health:      http://127.0.0.1:8002/health
+Metrics:     http://127.0.0.1:8002/metrics
+Prometheus:  http://127.0.0.1:9090
+Grafana:     http://127.0.0.1:3000/d/news-sentiment-ops
+
+Container port is 8000; host port is 8002. Local Python uses port 8000.
+Use your existing Grafana account; change default credentials if still used.
+
+======================================================================
+6. VERIFY API AND BATCH INFERENCE
+======================================================================
+PowerShell, against local Docker:
+
+Invoke-RestMethod http://127.0.0.1:8002/health
+$body = @{title="Company reports higher profits"; description="Revenue increased."} | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8002/predict -ContentType "application/json" -Body $body
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8002/batch -ContentType "text/csv" -InFile examples/batch_news.csv
+
+Batch CSV requires title; description is optional. HTTP batch limit: 500 rows.
+For larger CSVs, use the CLI with a compatible local model:
+
+python -m newsml.batch --input examples/batch_news.csv --output evidence/batch_predictions.csv
+
+Capture actual deployment identity, metrics and prediction:
+
+python scripts/verify_deployment.py --url http://127.0.0.1:8002 --output evidence/deployment.json
+
+The result checks agreement between health, prediction and manifest model IDs.
+It does not prove load capacity, security hardening, or rollback.
+
+======================================================================
+7. GITHUB AND CI
+======================================================================
+From the project folder, inspect before staging:
+
+git status
+git remote -v
+
+If origin is already the correct repository, leave it unchanged.
+If no origin exists:
+
+git remote add origin https://github.com/Tushar01-repo/bits-capstone-project.git
+
+Run the limited tracked-key check:
+
+python scripts/security_check.py
+
+This checks tracked private-key patterns; it is not a comprehensive secret or
+Git-history scanner. Review all staged files before committing. Do not stage
+raw data, private artifacts, .env, secrets, backups, or credentials.
+
+Stage the reviewed source/configuration/documentation changes, then:
+
+git diff --cached --stat
+git diff --cached --name-only
+git commit -m "Improve capstone verification, monitoring and deployment"
+git push origin main
+git rev-parse HEAD
+
+If push is rejected, inspect the remote changes before integrating them.
+Do not force-push to bypass an unexplained rejection.
+
+Open:
+https://github.com/Tushar01-repo/bits-capstone-project/actions
+
+Confirm Test and build succeeds for the final commit. Save the workflow URL
+and downloaded artifacts. It runs Python tests, browser tests, Docker build
+and tests inside Docker. Review warnings rather than assuming green means
+there are no limitations.
+
+======================================================================
+8. EC2 DEPLOYMENT / UPDATE
+======================================================================
+Use your existing EC2 instance. Keep application/monitoring ports bound to
+localhost and access them through SSH tunneling. Restrict SSH access.
+
+Windows PowerShell (replace EC2_HOST and key location):
+
+ssh -i "C:\Users\paltu\.ssh\news-ec2.pem" -L 18002:127.0.0.1:8002 -L 19090:127.0.0.1:9090 -L 13000:127.0.0.1:3000 ubuntu@EC2_HOST
+
+Keep that session open. On your Windows browser:
+Application: http://127.0.0.1:18002
+Prometheus:  http://127.0.0.1:19090
+Grafana:     http://127.0.0.1:13000/d/news-sentiment-ops
+
+On EC2, change to your existing checkout. Inspect local modifications first:
+
+git status
+git pull --ff-only origin main
+
+If a fast-forward pull fails, resolve the divergence without discarding local
+work. Ensure the authorized dataset is available privately under data/raw/.
+Check model dependencies (section 3), preserve the current image and model,
+then build/test:
+
+docker compose build
+docker compose run --rm --no-deps app python -m unittest discover -s tests -v
+
+Retrain only when needed and intentionally authorized by your deployment plan:
+
+docker compose run --rm train
+
+Start/recreate the application with the selected compatible model:
+
+docker compose -f compose.yaml -f compose.grafana.yaml --profile monitoring up -d --build --wait app prometheus grafana
+docker compose logs --tail=100 app
+curl --fail http://127.0.0.1:8002/health
+
+From Windows through the tunnel, save real EC2 evidence:
+
+python scripts/verify_deployment.py --url http://127.0.0.1:18002 --output evidence/ec2-deployment.json
+
+Record EC2 instance type, image ID, Git commit, model run ID and capture date.
+Do not replace deployed metrics with values copied from an older local run.
+
+======================================================================
+9. OPTIONAL GITHUB ACTIONS DEPLOYMENT
+======================================================================
+Manual EC2 deployment is not proof that the CD workflow executed.
+
+The supplied Deploy on private Docker host workflow requires:
+- A dedicated trusted Linux self-hosted runner with label news-capstone.
+- Docker/Compose installed and accessible to that runner.
+- Dataset at /opt/news-capstone/data/news_sentiment_raw.csv.
+- GitHub environment capstone-private; configure approval protection if used.
+- A trusted branch/commit; do not run untrusted PR code on this runner.
+
+The workflow runs container tests before training/deployment and captures
+health/prediction evidence. It uses Compose project name news-capstone.
+
+IMPORTANT: If your manual deployment uses another Compose project name, this
+workflow can create different model volumes and conflict on host port 8002.
+Choose one project name and plan migration before dispatching it. Do not run
+two stacks on the same host port accidentally. Preserve the old volumes.
+
+In GitHub Actions select the deployment workflow, select the reviewed branch,
+then Run workflow. Save the successful run URL and deployment evidence.
+This workflow retrains; it is not a model-preserving restart operation.
+
+======================================================================
+10. EVALUATION AND DRIFT PANELS
+======================================================================
+Evaluation:
+- Upload a CSV with title, optional description, and exactly one label column:
+  sentiment, sentiment_cat, human_label, or label.
+- Allowed labels: positive, neutral, negative.
+- View accuracy, macro-F1, confusion matrix and incorrect predictions.
+- Download the results and record the model version.
+- Fictional sample labels demonstrate functionality, not model quality.
+- Use independent human labels for a stronger real-world evaluation.
+
+Drift:
+- Upload at least 20 and at most 500 news rows.
+- Compare text length, vocabulary coverage and prediction distribution against
+  the saved training reference.
+- Download the drift report. Identify synthetic shift demonstrations as such.
+- Drift flags do not prove accuracy loss; investigate and obtain fresh labels.
+
+For independent review, use the reserved human_review_template.csv from the
+active run. Fill human_label, reviewer and rationale, then:
+
+python -m newsml.evaluate_review --input data/reviewed/completed_review.csv --output evidence/human_evaluation.json
+
+Do not claim human review is complete unless actual reviewers supplied labels.
+
+======================================================================
+11. PROMETHEUS AND GRAFANA
+======================================================================
+Check Prometheus Targets: job news-sentiment must be UP.
+Generate predictions and confirm counters change.
+
+Queries:
+
+up{job="news-sentiment"}
+sum(news_requests_total)
+sum(news_predictions_total)
+sum(news_server_errors_total)
+sum(news_client_errors_total)
+60 * sum(rate(news_requests_total[5m]))
+sum by (label) (news_predictions_by_label_total)
+1000 * sum(rate(news_request_duration_seconds_sum[5m])) / sum(rate(news_request_duration_seconds_count[5m]))
+histogram_quantile(0.95, sum by (le) (rate(news_post_latency_seconds_bucket[5m])))
+
+The last query returns seconds; multiply by 1000 for milliseconds.
+New error/histogram metrics require the updated app to be running.
+Latency covers all POST operations, not prediction requests alone.
+Counters reset when the API process restarts. Rates require multiple scrapes.
+Idle latency/error-rate ratios may be blank. These metrics do not measure
+sentiment accuracy. Existing Grafana panels still show their original scope.
+
+======================================================================
+12. CONFIGURE AND DEMONSTRATE ALERT DELIVERY
+======================================================================
+Read docs/ALERTING.md.
+Create secrets/alert_webhook_url containing a private HTTPS endpoint accepting
+Alertmanager generic webhook JSON. Do not commit it. An ordinary Slack/Teams
+incoming webhook is not automatically compatible with this payload.
+
+Start the optional overlay:
+
+docker compose -f compose.yaml -f compose.grafana.yaml -f compose.alerting.yaml --profile monitoring up -d app prometheus grafana alertmanager
+
+Check Alertmanager logs:
+
+docker compose -f compose.yaml -f compose.grafana.yaml -f compose.alerting.yaml --profile monitoring logs --tail=100 alertmanager
+
+The overlay adds persistent monitoring volumes. It does not migrate the old
+ephemeral Prometheus history. Keep the same Compose project name.
+
+During a planned demo window only:
+1. Stop the app: docker compose stop app
+2. Wait for the service-down rule and notification delay.
+3. Capture the actual delivered notification at the receiver.
+4. Restore: docker compose up -d --wait app
+5. Capture the resolved notification and health response.
+
+This interrupts service. Document severity, owner, grouping, repeat interval,
+silence expiry and weekly noise review. The supplied policy uses a 30-second
+group wait, 5-minute grouping interval and 4-hour repeat interval.
+
+======================================================================
+13. PERFORMANCE BENCHMARKS
+======================================================================
+Read docs/BENCHMARKS.md. Run with the compatible local model:
+
+python scripts/benchmark.py --iterations 500 --output evidence/inference-comparison.json
+python scripts/benchmark.py --url http://127.0.0.1:8002 --iterations 500 --concurrency 1 --output evidence/http-c1.json
+python scripts/benchmark.py --url http://127.0.0.1:8002 --iterations 500 --concurrency 8 --output evidence/http-c8.json
+
+For an EC2 benchmark, run on EC2 against its local port 8002. Running via an
+SSH tunnel includes tunnel/network overhead; label that result accordingly.
+The script must run in a Python environment with the project dependencies.
+For Docker-only in-process comparison:
+
+docker compose exec -T app python scripts/benchmark.py --artifacts /app/artifacts --output /app/logs/inference-comparison.json
+docker compose cp app:/app/logs/inference-comparison.json evidence/inference-comparison.json
+
+Record hardware, model, commit, dependencies, workload, concurrency, p50/p95,
+throughput and errors. Use identical conditions for before/after comparisons.
+The included paired benchmark compares the original and optimized functions.
+Do not claim its non-explanation speedup as an API speedup: /predict enables
+explanations. The packaged local benchmark is not EC2 evidence.
+
+======================================================================
+14. DEMONSTRATE ROLLBACK
+======================================================================
+Read docs/ROLLBACK.md. Do this during a planned interruption window.
+Do not train/deploy concurrently. Keep compatible model versions and images.
+
+Capture pre-rollback evidence (host Python with dependencies installed):
+
+python scripts/verify_deployment.py --output evidence/before-rollback.json
+
+List runs in the Docker model volume:
+
+docker compose run --rm --no-deps train python -c "from pathlib import Path; print([p.name for p in Path('/app/artifacts').iterdir() if p.is_dir()])"
+
+Replace PREVIOUS_RUN_ID with a known previous run:
+
+docker compose stop app
+docker compose run --rm --no-deps train python scripts/rollback.py --artifacts /app/artifacts --run-id PREVIOUS_RUN_ID
+docker compose up -d --force-recreate --wait app
+python scripts/verify_deployment.py --output evidence/after-rollback.json
+
+The helper checks the manifest/hash, backs up current.json and changes the
+pointer atomically. It does not restart the app or prove model quality.
+If restart fails, restore the prior pointer/run with compatible dependencies.
+
+For application-image rollback, preserve/tag the running image BEFORE updating,
+then use a Compose image override with --no-build. See docs/ROLLBACK.md.
+Record actual before/after health, predictions and elapsed recovery time.
+
+======================================================================
+15. DATASET, DOCUMENTATION AND FINAL EVIDENCE
+======================================================================
+Complete these before submission:
+[ ] data/DATASET.md: exact upstream URL, license, collection/labeling details.
+[ ] README.md: correct ports, setup instructions and actual final status.
+[ ] aws-architecture.md: deployed model/results and deployment alternatives.
+[ ] docs/MODEL_CARD.md: intended use, weak labels, neutral-class limitations.
+[ ] docs/VERIFICATION.md: links to actual tests, CI, EC2 and demo evidence.
+[ ] docs/REQUIREMENTS_MATRIX.md: each requirement mapped to concrete evidence.
+[ ] Final model manifest and metrics match /health and prediction model IDs.
+[ ] Explain historical 500 errors and capture a fresh successful smoke test.
+[ ] Preserve final commit hash and image ID.
+[ ] Remove keys, credentials and unlicensed raw data from public deliverables.
+
+Public repository currently ignores artifacts/logs. Deliberately add only
+reviewed, non-sensitive evidence if required. Do not force-add the entire
+artifacts directory: it contains raw-text splits and predictions.
+
+Browser checks after installing the browser dependency:
+
+npm install --no-save --package-lock=false playwright@1.62.1
+npx playwright install chromium
+node tests/browser.cjs
+
+Save ui-test-results/results.json from this actual run. The packaging environment
+could not run Chromium, so its report must not be treated as final browser proof.
+
+======================================================================
+16. VIDEO SUBMISSION
+======================================================================
+Follow the supplied 10–12 minute full-screen demonstration guidelines.
+Include your real introduction, full name, BITS ID and webcam identity check.
+Use your own voice and actual application execution.
+
+Suggested order:
+1. Introduction, problem scope and repository/commit.
+2. Data validation, splits and label limitations.
+3. Trained model, saved artifacts and evaluation results.
+4. Single prediction and batch upload/output.
+5. CI and actual EC2 deployment evidence.
+6. Evaluation and drift panels.
+7. Prometheus/Grafana and actual alert delivery evidence.
+8. Measured optimization and demonstrated rollback.
+9. Explainability, limitations and reproducible golden path.
+
+Do not claim FastAPI, Kubernetes/HPA, CNN robustness, quantization, or completed
+human review unless those are genuinely implemented and demonstrated. Earlier
+assignment-specific requirements are not automatically capstone requirements;
+check the current course rubric/transcripts for final applicability.
+
+FINAL STATUS RULE
+Configuration is not execution evidence. A green CI build is not proof of CD.
+A running EC2 instance is not proof of successful inference. A firing alert is
+not proof a notification was delivered. Save real outputs for the final version.

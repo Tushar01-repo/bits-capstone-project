@@ -1,0 +1,23 @@
+{
+  "unit_integration_tests": {
+    "exit_code": 0,
+    "count": 19
+  },
+  "installer": "passed checksum and model/Compose preservation checks",
+  "yaml": "parsed successfully; Docker/Prometheus validators not run",
+  "browser": "blocked: Chromium executable unavailable",
+  "docker": "not run in this environment",
+  "ec2": "not accessed; operator evidence required",
+  "alert_delivery": "not configured or sent",
+  "environment": {
+    "python": "3.12.14",
+    "sklearn": "1.8.0",
+    "numpy": "2.3.5",
+    "pandas": "2.2.3",
+    "scipy": "1.17.0",
+    "joblib": "1.5.3"
+  },
+  "dependency_note": "Local tests/benchmark ran in the environment above, not a fresh install of pinned deployment requirements. Use CI to validate that lock.",
+  "local_http_capture": "passed",
+  "histogram_parse": "Prometheus client parser unavailable; histogram counts covered by unit test. Validate with Prometheus on deployment."
+}

@@ -1,0 +1,207 @@
+{
+  "captured_at": "2026-10-24T19:25:05.774145+00:00",
+  "base_url": "http://127.0.0.1:37631",
+  "client_python": "3.12.14",
+  "checkout_commit": "unavailable",
+  "health": {
+    "status": "ready",
+    "model_version": "20261024T192406Z-3b3251"
+  },
+  "prediction": {
+    "sentiment": "positive",
+    "probabilities": {
+      "negative": 0.038757323739929926,
+      "neutral": 0.10146066491812164,
+      "positive": 0.8597820113419483
+    },
+    "confidence": 0.8597820113419483,
+    "needs_review": false,
+    "model_version": "20261024T192406Z-3b3251",
+    "word_count": 6,
+    "explanation": {
+      "class": "positive",
+      "intercept": 0.08616062252534223,
+      "terms": [
+        {
+          "term": "increased",
+          "contribution": 0.7161548299959051
+        },
+        {
+          "term": "profits",
+          "contribution": 0.4431305630833087
+        },
+        {
+          "term": "company",
+          "contribution": 0.21942131361186018
+        },
+        {
+          "term": "higher",
+          "contribution": 0.2069074338094687
+        },
+        {
+          "term": "company reports",
+          "contribution": 0.08986712844970852
+        },
+        {
+          "term": "reports",
+          "contribution": -0.015442199568264226
+        },
+        {
+          "term": "revenue",
+          "contribution": -0.0007440783848846616
+        }
+      ],
+      "meaning": "Contributions to the predicted class logit; not causal evidence or a financial rationale."
+    }
+  },
+  "model_manifest": {
+    "run_id": "20261024T192406Z-3b3251",
+    "git_commit": "not_in_git",
+    "input_sha256": "2cc2ff725133add25ebdcf7a1bd16e30b7be0e6686239b7c53355432fcc06b53",
+    "python": "3.12.14",
+    "sklearn": "1.8.0",
+    "pandas": "2.2.3",
+    "numpy": "2.3.5",
+    "random_seed": 42,
+    "model_sha256": "9bd32bd44986f8dbdf123ff246fccf263f15045a516c1125cda42a5848ea8b1d",
+    "completed_at": "2026-10-24T19:24:17.322810+00:00"
+  },
+  "metrics": {
+    "label_provenance": "Automated dataset labels; not independently verified financial sentiment.",
+    "validation_candidates": [
+      {
+        "C": 0.5,
+        "validation_macro_f1": 0.5938245707645501
+      },
+      {
+        "C": 2.0,
+        "validation_macro_f1": 0.6007754000338466
+      }
+    ],
+    "selected_C": 2.0,
+    "test": {
+      "accuracy": 0.7137614678899082,
+      "macro_f1": 0.6095611440477218,
+      "classification_report": {
+        "negative": {
+          "precision": 0.7133655394524959,
+          "recall": 0.7371048252911814,
+          "f1-score": 0.7250409165302782,
+          "support": 601.0
+        },
+        "neutral": {
+          "precision": 0.34615384615384615,
+          "recall": 0.2983425414364641,
+          "f1-score": 0.32047477744807124,
+          "support": 181.0
+        },
+        "positive": {
+          "precision": 0.7808857808857809,
+          "recall": 0.7854630715123095,
+          "f1-score": 0.7831677381648159,
+          "support": 853.0
+        },
+        "accuracy": 0.7137614678899082,
+        "macro avg": {
+          "precision": 0.6134683888307076,
+          "recall": 0.606970146079985,
+          "f1-score": 0.6095611440477218,
+          "support": 1635.0
+        },
+        "weighted avg": {
+          "precision": 0.707940126275454,
+          "recall": 0.7137614678899082,
+          "f1-score": 0.7105795756620098,
+          "support": 1635.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          443,
+          38,
+          120
+        ],
+        [
+          59,
+          54,
+          68
+        ],
+        [
+          119,
+          64,
+          670
+        ]
+      ],
+      "label_order": [
+        "negative",
+        "neutral",
+        "positive"
+      ],
+      "log_loss": 0.7129406259266334
+    },
+    "majority_baseline": {
+      "accuracy": 0.5217125382262997,
+      "macro_f1": 0.2285637727759914,
+      "classification_report": {
+        "negative": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 601.0
+        },
+        "neutral": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1-score": 0.0,
+          "support": 181.0
+        },
+        "positive": {
+          "precision": 0.5217125382262997,
+          "recall": 1.0,
+          "f1-score": 0.6856913183279743,
+          "support": 853.0
+        },
+        "accuracy": 0.5217125382262997,
+        "macro avg": {
+          "precision": 0.17390417940876657,
+          "recall": 0.3333333333333333,
+          "f1-score": 0.2285637727759914,
+          "support": 1635.0
+        },
+        "weighted avg": {
+          "precision": 0.2721839725425282,
+          "recall": 0.5217125382262997,
+          "f1-score": 0.3577337581246251,
+          "support": 1635.0
+        }
+      },
+      "confusion_matrix": [
+        [
+          0,
+          0,
+          601
+        ],
+        [
+          0,
+          0,
+          181
+        ],
+        [
+          0,
+          0,
+          853
+        ]
+      ],
+      "label_order": [
+        "negative",
+        "neutral",
+        "positive"
+      ]
+    },
+    "human_evaluation": {
+      "status": "pending_human_review",
+      "reserved_rows": 300
+    }
+  },
+  "scope": "Local validation only; not EC2"
+}
