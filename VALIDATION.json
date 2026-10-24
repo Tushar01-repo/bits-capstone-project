@@ -1,0 +1,15 @@
+{
+  "configuration_checks": "passed",
+  "panel_count": 12,
+  "metrics_matched_to_app": [
+    "news_errors_total",
+    "news_predictions_by_label_total",
+    "news_predictions_total",
+    "news_request_duration_seconds_count",
+    "news_request_duration_seconds_sum",
+    "news_requests_total"
+  ],
+  "verifier_mock_success_and_down_target": "passed",
+  "docker_runtime": "not_executed",
+  "grafana_rendering": "not_executed"
+}

@@ -1,0 +1,10 @@
+{
+  "newsml/server.py": "f92e4f375ecebc45fef65e55ffe5684d560acdc93e07570e5a6131021b7ae4de",
+  "newsml/dashboard.html": "55424516b3a8dbfbaa40a64deef10884a93e84a59e00261616c96087d616d818",
+  "newsml/operations.py": "d23ffc6f85f4ec252f82c5358deaa246e36e9e439ef74fe6715322718db6d97c",
+  "newsml/samples/evaluation.csv": "1ebaf9ab913d36e1155517e7e9c07e2868708fda2f1c8fc7b76d6a7c4a7cab14",
+  "newsml/samples/drift.csv": "b8020041b7f541794b480f76782af816deeffb43b8874fa3ecf0a9df8a099e3d",
+  "tests/test_system.py": "ad992c905de132df91d72620557f0a428cc91926b16ace8db43bf605c61dd3d8",
+  "tests/browser.cjs": "91e0298427ecd2f1148e98fa5bf2c39e261cc762deae04fc5b8816b6e502d164",
+  "docs/DASHBOARD_OPERATIONS.md": "5004778a41115021a969df5655c4a18042a6d8714aaa9d96cbbedf9321dc3072"
+}

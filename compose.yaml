@@ -11,7 +11,7 @@ services:
   app:
     build: .
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8002:8000"
     volumes:
       - model-data:/app/artifacts:ro
       - request-logs:/app/logs

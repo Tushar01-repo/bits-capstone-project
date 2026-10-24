@@ -82,4 +82,43 @@ class SystemTests(unittest.TestCase):
     def test_artifact_manifest(self):
         manifest=json.loads((self.run_dir/'manifest.json').read_text());self.assertEqual(manifest['run_id'],self.bundle['run_id']);self.assertEqual(len(manifest['input_sha256']),64)
 
+    def csv_request(self,route,frame):
+        body=frame.to_csv(index=False).encode('utf-8-sig')
+        req=Request(self.base+route,data=body,headers={'Content-Type':'text/csv'})
+        with urlopen(req) as r:return json.load(r)
+    def test_uploaded_evaluation_known_scores(self):
+        frame=pd.DataFrame({'title':['strong profit growth','weak losses failure','scheduled announcement date']})
+        expected=[r['sentiment'] for r in predict(self.bundle,frame.to_dict('records'))]
+        frame['sentiment']=expected
+        frame.loc[2,'sentiment']=next(c for c in ['positive','negative','neutral'] if c!=expected[2])
+        d=self.csv_request('/evaluate',frame)
+        self.assertAlmostEqual(d['accuracy'],2/3);self.assertEqual(d['incorrect_rows'],1)
+        self.assertEqual(sum(map(sum,d['confusion_matrix'])),3)
+        self.assertEqual(d['model_version'],self.bundle['run_id'])
+        self.assertTrue(d['warnings']);self.assertEqual(len(d['predictions']),3)
+    def test_upload_validation(self):
+        invalid=[pd.DataFrame({'title':['hello']}),pd.DataFrame({'title':['hello'],'sentiment':['mixed']}),pd.DataFrame({'title':[''],'sentiment':['positive']}),pd.DataFrame({'title':['hello'],'sentiment':['positive'],'label':['negative']})]
+        for frame in invalid:
+            with self.assertRaises(HTTPError) as err:self.csv_request('/evaluate',frame)
+            self.assertEqual(err.exception.code,400)
+        with self.assertRaises(HTTPError) as err:self.csv_request('/drift',pd.DataFrame({'title':['a']*19}))
+        self.assertEqual(err.exception.code,400)
+        with self.assertRaises(HTTPError) as err:self.csv_request('/evaluate',pd.DataFrame({'title':['a']*501,'sentiment':['neutral']*501}))
+        self.assertEqual(err.exception.code,400)
+    def test_evaluation_overlap_and_alias(self):
+        frame=pd.read_csv(self.run_dir/'train.csv').head(3)[['title','description','sentiment_cat']]
+        d=self.csv_request('/evaluate',frame)
+        self.assertEqual(d['training_title_overlap_rows'],3)
+        self.assertEqual(d['label_column'],'sentiment_cat')
+    def test_live_drift_and_operation_counts(self):
+        ref=pd.read_csv(self.run_dir/'reference.csv')
+        before=(self.art/'current.json').read_bytes()
+        d=self.csv_request('/drift',ref[['title','description']])
+        self.assertEqual(d['alerts'],[])
+        shifted=pd.DataFrame({'title':[f'Sports championship fixture {i}' for i in range(30)],'description':['football stadium goals '*100]*30})
+        self.assertTrue(self.csv_request('/drift',shifted)['alerts'])
+        self.assertEqual(before,(self.art/'current.json').read_bytes())
+        with urlopen(self.base+'/monitoring') as response:m=json.load(response)
+        self.assertGreaterEqual(m['operations']['/drift'],2)
+
 if __name__=='__main__':unittest.main()

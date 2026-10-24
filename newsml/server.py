@@ -10,23 +10,26 @@ from pathlib import Path
 import threading
 import time
 import uuid
+import traceback
 from .core import load_bundle,predict
+from .operations import evaluate_upload, drift_upload
 
 MAX_BODY=2_000_000
 
 class State:
     def __init__(self,artifacts,logs):
         self.bundle,self.run=load_bundle(artifacts);self.logs=Path(logs);self.logs.mkdir(parents=True,exist_ok=True)
-        self.lock=threading.Lock();self.requests=0;self.errors=0;self.predictions=0;self.seconds=0.;self.by_label={k:0 for k in ['positive','negative','neutral']}
-    def record(self,status,elapsed,outputs):
-        event={'time':datetime.now(timezone.utc).isoformat(),'request_id':uuid.uuid4().hex,'status':status,'seconds':elapsed,'model_version':self.bundle['run_id'],'predictions':[{'sentiment':r['sentiment'],'confidence':r['confidence'],'word_count':r['word_count']} for r in outputs]}
+        self.lock=threading.Lock();self.requests=0;self.errors=0;self.predictions=0;self.seconds=0.;self.by_label={k:0 for k in ['positive','negative','neutral']};self.operations={}
+    def record(self,status,elapsed,outputs,operation="/predict"):
+        event={'time':datetime.now(timezone.utc).isoformat(),'request_id':uuid.uuid4().hex,'status':status,'operation':operation,'seconds':elapsed,'model_version':self.bundle['run_id'],'predictions':[{'sentiment':r['sentiment'],'confidence':r['confidence'],'word_count':r['word_count']} for r in outputs]}
         with self.lock:
+            self.operations[operation]=self.operations.get(operation,0)+1
             self.requests+=1;self.errors+=int(status>=400);self.seconds+=elapsed;self.predictions+=len(outputs)
             for r in outputs:self.by_label[r['sentiment']]+=1
             with (self.logs/'requests.jsonl').open('a',encoding='utf-8') as f:f.write(json.dumps(event)+'\n')
     def metrics(self):
         with self.lock:
-            return {'requests':self.requests,'errors':self.errors,'predictions':self.predictions,'latency_seconds_sum':self.seconds,'by_label':dict(self.by_label),'model_version':self.bundle['run_id'],'scope':'Current process; JSONL log persists across restarts'}
+            return {'requests':self.requests,'errors':self.errors,'predictions':self.predictions,'latency_seconds_sum':self.seconds,'by_label':dict(self.by_label),'model_version':self.bundle['run_id'],'operations':dict(self.operations),'mean_latency_seconds':self.seconds/max(1,self.requests),'scope':'POST operations in current process; prediction counts cover /predict and /batch only. JSONL persists across restarts'}
 
 def make_server(host='127.0.0.1',port=8000,artifacts='artifacts',logs='logs'):
     state=State(artifacts,logs)
@@ -40,7 +43,10 @@ def make_server(host='127.0.0.1',port=8000,artifacts='artifacts',logs='logs'):
             self.send_header('X-Content-Type-Options','nosniff');self.send_header('Cache-Control','no-store');self.end_headers();self.wfile.write(data)
         def do_GET(self):
             routes={'/report/metrics':'metrics.json','/report/quality':'data_quality.json','/report/drift':'drift.json','/report/drift-simulation':'drift_simulation.json','/report/responsible-ai':'responsible_ai.json','/report/manifest':'manifest.json'}
-            if self.path=='/':return self.send(200,Path(__file__).with_name('dashboard.html').read_text(),'text/html')
+            if self.path=='/':return self.send(200,Path(__file__).with_name('dashboard.html').read_text(encoding='utf-8'),'text/html')
+            if self.path in ['/examples/evaluation.csv','/examples/drift.csv']:
+                name=self.path.rsplit('/',1)[1]
+                return self.send(200,(Path(__file__).parent/'samples'/name).read_text(encoding='utf-8'),'text/csv')
             if self.path=='/health':return self.send(200,{'status':'ready','model_version':state.bundle['run_id']})
             if self.path=='/monitoring':return self.send(200,state.metrics())
             if self.path=='/metrics':
@@ -52,7 +58,7 @@ def make_server(host='127.0.0.1',port=8000,artifacts='artifacts',logs='logs'):
         def do_POST(self):
             start=time.perf_counter();status=200;outputs=[]
             try:
-                if self.path not in ['/predict','/batch']:
+                if self.path not in ['/predict','/batch','/evaluate','/drift']:
                     status=404;return self.send(status,{'error':'Route not found'})
                 try:length=int(self.headers.get('Content-Length','0'))
                 except ValueError:raise ValueError('Invalid Content-Length')
@@ -65,6 +71,10 @@ def make_server(host='127.0.0.1',port=8000,artifacts='artifacts',logs='logs'):
                     if not isinstance(payload,dict):raise ValueError('JSON must be an object')
                     outputs=predict(state.bundle,[payload],explain=True)
                     self.send(200,outputs[0])
+                elif self.path in ['/evaluate','/drift']:
+                    if not self.headers.get('Content-Type','').startswith('text/csv'):raise ValueError('Use text/csv')
+                    operation = evaluate_upload if self.path=='/evaluate' else drift_upload
+                    self.send(200,operation(state.bundle,state.run,body))
                 else:
                     if not self.headers.get('Content-Type','').startswith('text/csv'):raise ValueError('Use text/csv')
                     reader=csv.DictReader(io.StringIO(body.decode('utf-8-sig')))
@@ -77,8 +87,9 @@ def make_server(host='127.0.0.1',port=8000,artifacts='artifacts',logs='logs'):
             except (ValueError,UnicodeDecodeError,TypeError,csv.Error) as exc:
                 status=400;self.send(status,{'error':str(exc)})
             except Exception:
-                status=500;self.send(status,{'error':'Internal inference error'})
-            finally:state.record(status,time.perf_counter()-start,outputs)
+                traceback.print_exc()
+                status=500;self.send(status,{'error':'Internal operation error; see server logs'})
+            finally:state.record(status,time.perf_counter()-start,outputs,self.path)
     server=ThreadingHTTPServer((host,port),Handler);server.daemon_threads=True
     return server
 
